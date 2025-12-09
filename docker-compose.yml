@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  audio-bot:
+    build: .
+    container_name: pnprojects-audio-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./downloads:/app/downloads
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    driver: bridge

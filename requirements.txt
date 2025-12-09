@@ -1,0 +1,27 @@
+# Core Telegram Bot Framework
+pyrogram==2.0.106
+TgCrypto==1.2.5
+
+# Environment Configuration
+python-dotenv==1.0.0
+
+# Audio Processing Libraries
+ffmpeg-python==0.2.0
+pydub==0.25.1
+
+# Advanced Audio Processing
+librosa==0.10.1
+soundfile==0.12.1
+audioread==3.0.1
+
+# Audio Analysis
+mutagen==1.47.0
+scipy==1.11.4
+numpy==1.26.2
+
+# System and Performance
+aiofiles==23.2.1
+psutil==5.9.6
+
+# Utility
+pillow==10.1.0
