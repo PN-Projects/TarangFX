@@ -478,6 +478,7 @@ See the [LICENSE](LICENSE) file for full details.
 </a><br />
 <sub>Core Developer</sub>
 </td>
+
 <td align="center">
 <a href="https://t.me/PrabodhNandini">
 <img src="https://t.me/i/userpic/320/PrabodhNandini.jpg" width="100px;" alt="Avika Trivedi"/><br />
@@ -485,8 +486,17 @@ See the [LICENSE](LICENSE) file for full details.
 </a><br />
 <sub>Core Developer</sub>
 </td>
+
+<td align="center">
+<a href="https://t.me/shhhwrma">
+<img src="https://t.me/i/userpic/320/shhhwrma.jpg" width="100px;" alt="Anand Sharma"/><br />
+<sub><b>Anand Sharma</b></sub>
+</a><br />
+<sub>Core Developer</sub>
+</td>
 </tr>
 </table>
+
 
 ---
 
