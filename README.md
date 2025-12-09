@@ -473,14 +473,14 @@ See the [LICENSE](LICENSE) file for full details.
 <tr>
 <td align="center">
 <a href="https://t.me/dotenv">
-<img src="https://avatars.githubusercontent.com/u/1?s=100" width="100px;" alt="Parthiv Katapara"/><br />
+<img src="https://t.me/i/userpic/320/dotenv.jpg" width="100px;" alt="Parthiv Katapara"/><br />
 <sub><b>Parthiv Katapara</b></sub>
 </a><br />
 <sub>Core Developer</sub>
 </td>
 <td align="center">
 <a href="https://t.me/PrabodhNandini">
-<img src="https://avatars.githubusercontent.com/u/2?s=100" width="100px;" alt="Avika Trivedi"/><br />
+<img src="https://t.me/i/userpic/320/PrabodhNandini.jpg" width="100px;" alt="Avika Trivedi"/><br />
 <sub><b>Avika Trivedi</b></sub>
 </a><br />
 <sub>Core Developer</sub>
