@@ -1,0 +1,13 @@
+
+.env
+venv/
+__pycache__/
+*.session
+*.session-journal
+downloads/
+temp/
+logs/
+.idea/
+.vscode/
+*.pyc
+DS_Store
