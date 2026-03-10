@@ -64,6 +64,14 @@ class Config(BaseSettings):
         default="redis://localhost:6379/0",
         description="Redis connection URL"
     )
+    UPSTASH_REDIS_REST_URL: str = Field(
+        default="",
+        description="Upstash REST URL for Free Tier"
+    )
+    UPSTASH_REDIS_REST_TOKEN: str = Field(
+        default="",
+        description="Upstash REST Token for Free Tier"
+    )
     REDIS_POOL_SIZE: int = Field(default=50, description="Redis connection pool size")
     CACHE_TTL: int = Field(default=300, description="Default cache TTL (5 minutes)")
     
