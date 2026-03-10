@@ -22,7 +22,7 @@ class Config(BaseSettings):
     BOT_TOKEN: str = Field(..., description="Bot token from @BotFather")
     
     # Session configuration
-    SESSION_NAME: str = Field(default="tarangfx_bot", description="Session file name")
+    SESSION_NAME: str = Field(default="/tmp/tarangfx_bot", description="Session file name")
     
     # ========================================================================
     # CONCURRENCY LIMITS (Prevent overwhelming system)
