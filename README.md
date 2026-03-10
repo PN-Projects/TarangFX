@@ -1,3 +1,12 @@
+---
+title: TarangFX
+emoji: 🎵
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
 <div align="center">
 
 # 🎵 TarangFX v2.0.0-beta
