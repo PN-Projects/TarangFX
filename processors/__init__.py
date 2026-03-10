@@ -109,6 +109,23 @@ class AsyncAudioProcessor:
     async def _convert_format(self, params: Dict) -> Path:
         """Convert format using FFmpeg - ASYNC (runs in executor)"""
         output_ext = params.get('extension', '.mp3')
+        
+        # Smart codec selection
+        codec_map = {
+            '.mp3': 'libmp3lame',
+            '.aac': 'aac',
+            '.m4a': 'aac',
+            '.ogg': 'libopus',
+            '.opus': 'libopus',
+            '.flac': 'flac',
+            '.wav': 'pcm_s16le',
+            '.aiff': 'pcm_s16be',
+            '.alac': 'alac',
+        }
+        
+        default_codec = codec_map.get(output_ext, 'libmp3lame')
+        start_codec = params.get('codec', default_codec)
+
         # FFmpeg cannot write to a .alac container, it must be .m4a
         if output_ext == '.alac':
             output_ext = '.m4a'
