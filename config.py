@@ -126,7 +126,7 @@ class Config(BaseSettings):
     # ========================================================================
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
     LOG_TO_FILE: bool = Field(default=True, description="Log to file")
-    LOG_DIR: Path = Field(default=Path("logs"), description="Log directory")
+    LOG_DIR: Path = Field(default=Path("/tmp/tarangfx_logs"), description="Log directory")
     
     # ========================================================================
     # PERFORMANCE TUNING
