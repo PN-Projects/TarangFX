@@ -251,6 +251,22 @@ async def start_health_server():
     logger.info("Starting health check server on port 7860...")
     await site.start()
 
+
+async def self_ping_loop():
+    """Self-ping every 50 minutes to prevent HF Space from going idle"""
+    import aiohttp
+    PING_INTERVAL = 50 * 60  # 50 minutes in seconds
+    # Wait a bit before starting so the server is up
+    await asyncio.sleep(30)
+    while True:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get('http://localhost:7860/health', timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    logger.info(f"[KeepAlive] Self-ping OK: {resp.status}")
+        except Exception as e:
+            logger.warning(f"[KeepAlive] Self-ping failed: {e}")
+        await asyncio.sleep(PING_INTERVAL)
+
 # ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
@@ -263,6 +279,9 @@ async def main():
         
         # Start health check server for HF Spaces
         await start_health_server()
+        
+        # Start self-ping loop to prevent HF Space from going idle
+        asyncio.create_task(self_ping_loop())
         
         logger.info("Bot is running... Press Ctrl+C to stop")
         await bot.run_until_disconnected()
