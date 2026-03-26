@@ -8,6 +8,7 @@ import asyncio
 from pathlib import Path
 from loguru import logger
 from telethon import TelegramClient, events
+from telethon.errors import FloodWaitError
 from telethon.tl.types import DocumentAttributeAudio
 
 # Use uvloop for 2x performance boost
@@ -272,26 +273,36 @@ async def self_ping_loop():
 # ============================================================================
 
 async def main():
-    """Main entry point"""
-    try:
-        await bot.start(bot_token=config.BOT_TOKEN)
-        await startup()
-        
-        # Start health check server for HF Spaces
-        await start_health_server()
-        
-        # Start self-ping loop to prevent HF Space from going idle
-        asyncio.create_task(self_ping_loop())
-        
-        logger.info("Bot is running... Press Ctrl+C to stop")
-        await bot.run_until_disconnected()
-        
-    except KeyboardInterrupt:
-        logger.info("Received shutdown signal")
-    except Exception as e:
-        logger.error(f"Fatal error: {e}")
-    finally:
-        await shutdown()
+    """Main entry point with FloodWait handling"""
+    while True:
+        try:
+            await bot.start(bot_token=config.BOT_TOKEN)
+            await startup()
+            
+            # Start health check server for HF Spaces
+            await start_health_server()
+            
+            # Start self-ping loop to prevent HF Space from going idle
+            asyncio.create_task(self_ping_loop())
+            
+            logger.info("Bot is running... Press Ctrl+C to stop")
+            await bot.run_until_disconnected()
+            break  # Clean exit
+            
+        except FloodWaitError as e:
+            wait_sec = e.seconds
+            logger.warning(f"⏳ Telegram FloodWait: need to wait {wait_sec}s before reconnecting...")
+            await asyncio.sleep(wait_sec + 5)  # +5s buffer
+            logger.info("Retrying bot.start() after FloodWait...")
+            continue
+        except KeyboardInterrupt:
+            logger.info("Received shutdown signal")
+            break
+        except Exception as e:
+            logger.error(f"Fatal error: {e}")
+            break
+        finally:
+            await shutdown()
 
 
 if __name__ == "__main__":
