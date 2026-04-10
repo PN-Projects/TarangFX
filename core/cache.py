@@ -6,19 +6,22 @@ Used for sessions, rate limiting, and caching
 
 import os
 from upstash_redis.asyncio import Redis
+import redis.asyncio as redis_async
 import msgpack
 from typing import Optional, Any
 from loguru import logger
+from urllib.parse import urlparse
 
 from config import config
 
 
 class Cache:
-    """Async Upstash Redis cache via REST API"""
+    """Async cache supporting native Redis and Upstash REST."""
     
     def __init__(self):
         # Using Any to prevent linter errors since Pyre might not know upstash_redis
         self._redis: Optional[Any] = None
+        self._backend: str = "unknown"
         
     @property
     def redis(self) -> Any:
@@ -27,31 +30,46 @@ class Cache:
         return self._redis
     
     async def connect(self):
-        """Create Upstash Redis connection - ASYNC"""
+        """Create cache connection - ASYNC."""
         try:
-            # Check upstash credentials from config
+            # Priority:
+            # 1) Upstash REST credentials when provided
+            # 2) REDIS_URL when provided
+            # 3) Local Redis fallback
             url = config.UPSTASH_REDIS_REST_URL or os.environ.get("UPSTASH_REDIS_REST_URL")
             token = config.UPSTASH_REDIS_REST_TOKEN or os.environ.get("UPSTASH_REDIS_REST_TOKEN")
-            
-            if not url or not token:
-                logger.warning("Upstash credentials not found in env, falling back to REDIS_URL if it's an Upstash URI.")
-                url = config.REDIS_URL
-                token = "missing_token"
-            
-            self._redis = Redis(url=url, token=token)
-            
-            # Test connection
+
+            if url and token:
+                self._redis = Redis(url=url, token=token)
+                await self._redis.ping()
+                self._backend = "upstash"
+                logger.info("✅ Upstash Redis cache connected successfully")
+                return
+
+            redis_url = (config.REDIS_URL or os.environ.get("REDIS_URL", "")).strip() or "redis://localhost:6379/0"
+            parsed = urlparse(redis_url)
+            redis_scheme = parsed.scheme.lower() if parsed.scheme else ""
+
+            if redis_scheme not in {"redis", "rediss"}:
+                raise RuntimeError(f"Unsupported REDIS_URL scheme: {redis_url}")
+
+            self._redis = redis_async.from_url(redis_url, decode_responses=False)
             await self._redis.ping()
-            
-            logger.info("✅ Upstash Redis cache connected successfully")
+            self._backend = "native"
+            logger.info(f"✅ Native Redis cache connected: {redis_url}")
             
         except Exception as e:
             logger.error(f"❌ Redis connection failed: {e}")
             raise
     
     async def disconnect(self):
-        """No connection pooling to close with Upstash REST"""
-        logger.info("Upstash cache disconnected")
+        """Close native Redis client if needed."""
+        if self._redis is not None and self._backend == "native":
+            try:
+                await self._redis.aclose()
+            except Exception:
+                pass
+        logger.info("Cache disconnected")
         
     async def get(self, key: str) -> Optional[Any]:
         """
@@ -61,15 +79,22 @@ class Cache:
         try:
             data = await self.redis.get(key)
             if data:
-                # Upstash REST returns strings, we stored base64 strings
-                if isinstance(data, str):
-                     import base64
-                     try:
-                         raw_bytes = base64.b64decode(data)
-                         return msgpack.unpackb(raw_bytes, raw=False)
-                     except Exception as decode_err:
-                         # In case it's not base64/msgpack (e.g. rate limit counts)
-                         return data
+                if self._backend == "upstash" and isinstance(data, str):
+                    import base64
+                    try:
+                        raw_bytes = base64.b64decode(data)
+                        return msgpack.unpackb(raw_bytes, raw=False)
+                    except Exception:
+                        # In case it's not base64/msgpack (e.g. rate limit counts)
+                        return data
+
+                # Native Redis returns bytes for stored msgpack values.
+                if self._backend == "native" and isinstance(data, (bytes, bytearray)):
+                    try:
+                        return msgpack.unpackb(data, raw=False)
+                    except Exception:
+                        return data
+
                 return data
             return None
         except Exception as e:
@@ -94,11 +119,13 @@ class Cache:
         try:
             data = msgpack.packb(value, use_bin_type=True)
             ttl = ttl or config.CACHE_TTL
-            # Upstash needs binary encoding explicitly passed or base64
-            # We will use base64 for safe REST transmission
-            import base64
-            b64_data = base64.b64encode(data).decode('utf-8')
-            await self.redis.setex(key, ttl, b64_data)
+            if self._backend == "upstash":
+                # Upstash REST path stores base64-wrapped msgpack payload.
+                import base64
+                b64_data = base64.b64encode(data).decode('utf-8')
+                await self.redis.setex(key, ttl, b64_data)
+            else:
+                await self.redis.setex(key, ttl, data)
             return True
         except Exception as e:
             logger.error(f"Cache set error for key {key}: {e}")

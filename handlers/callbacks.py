@@ -7,6 +7,32 @@ from handlers.ui import get_processing_menu, get_format_menu, get_sample_rate_me
 from processors import AsyncAudioProcessor
 from pathlib import Path
 
+
+def _resolve_target_format(session) -> str:
+    """Get active target format from convert op, otherwise source file format."""
+    convert_op = next((op for op in session.operations if op.operation_type == "convert"), None)
+    if convert_op:
+        return str(convert_op.parameters.get("format", "")).lower()
+
+    source_fmt = session.audio_file.get("format") if session.audio_file else ""
+    return str(source_fmt).lower()
+
+
+def _allowed_bitrates_for(format_name: str, is_premium: bool):
+    normalized = (format_name or "").lower()
+    is_lossless_target = normalized in {"flac", "wav", "aiff", "alac"}
+
+    if is_lossless_target and is_premium:
+        return {
+            128, 192, 256, 320,
+            512, 768,
+            1024, 1536, 2048,
+            3072, 4096, 6144,
+            8192, 12288, 16384,
+            24576, 32768, 36000,
+        }
+    return {128, 192, 256, 320}
+
 async def handle_callback(event, bot, concurrency):
     """Handle inline button callbacks - ASYNC"""
     user_id = event.sender_id
@@ -59,7 +85,8 @@ async def handle_operation_select(event, session, data, is_premium):
     elif op_type == "resample":
         await event.edit(buttons=get_sample_rate_menu(is_premium))
     elif op_type == "bitrate":
-        await event.edit(buttons=get_bitrate_menu())
+        target_format = _resolve_target_format(session)
+        await event.edit(buttons=get_bitrate_menu(format_name=target_format, is_premium=is_premium))
     elif op_type == "effects":
         if not is_premium:
             await event.answer("Premium feature!", alert=True)
@@ -88,9 +115,14 @@ async def handle_parameter_select(event, session, data):
     
     if data.startswith("fmt_"):
         format_name = data.replace("fmt_", "")
+        existing_bitrate = next((op for op in session.operations if op.operation_type == "bitrate"), None)
+        convert_params = {"format": format_name, "extension": f".{format_name}"}
+        if existing_bitrate and existing_bitrate.parameters.get("bitrate") != "original":
+            convert_params["bitrate"] = existing_bitrate.parameters.get("bitrate")
+
         operation = ProcessingOperation(
             operation_type="convert",
-            parameters={"format": format_name, "extension": f".{format_name}"},
+            parameters=convert_params,
             priority=OPERATION_PRIORITIES.get("convert", 100)
         )
         session.add_operation(operation)
@@ -112,6 +144,7 @@ async def handle_parameter_select(event, session, data):
         
     elif data.startswith("br_"):
         bitrate_str = data.replace("br_", "")
+        target_format = _resolve_target_format(session)
         
         if bitrate_str == "original":
             # No bitrate operation needed (or a dummy one to confirm selection)
@@ -123,13 +156,28 @@ async def handle_parameter_select(event, session, data):
                 priority=OPERATION_PRIORITIES.get("bitrate", 90)
             )
             await event.answer("✅ Keeping original bitrate")
+
+            convert_op = next((op for op in session.operations if op.operation_type == "convert"), None)
+            if convert_op and "bitrate" in convert_op.parameters:
+                del convert_op.parameters["bitrate"]
         else:
             bitrate = int(bitrate_str)
+            allowed_bitrates = _allowed_bitrates_for(target_format, is_premium)
+            if bitrate not in allowed_bitrates:
+                await event.answer("❌ Unsupported bitrate for selected format", alert=True)
+                return
+
             operation = ProcessingOperation(
                 operation_type="bitrate",
                 parameters={"bitrate": bitrate},
                 priority=OPERATION_PRIORITIES.get("bitrate", 90)
             )
+
+            # Keep convert and bitrate selections in sync so final encoding uses this target bitrate.
+            convert_op = next((op for op in session.operations if op.operation_type == "convert"), None)
+            if convert_op:
+                convert_op.parameters["bitrate"] = bitrate
+
             await event.answer(f"✅ Bitrate: {bitrate} kbps")
             
         session.add_operation(operation)

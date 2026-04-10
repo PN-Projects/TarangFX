@@ -80,10 +80,24 @@ class AsyncAudioProcessor:
             
             logger.info(f"[Processor] Pipeline complete: {self.current_file}")
             return self.current_file
-            
+
         except Exception as e:
             logger.error(f"[Processor] Error in pipeline: {e}")
             raise
+
+    def _flac_compression_level(self, bitrate: int) -> int:
+        """Map a bitrate-style selection onto FFmpeg FLAC compression levels."""
+        if bitrate >= 30000:
+            return 0
+        if bitrate >= 20000:
+            return 2
+        if bitrate >= 12000:
+            return 4
+        if bitrate >= 8000:
+            return 6
+        if bitrate >= 4000:
+            return 8
+        return 12
     
     async def _execute_operation(self, operation: ProcessingOperation) -> Path:
         """Execute single operation - ASYNC"""
@@ -141,8 +155,12 @@ class AsyncAudioProcessor:
         ]
         
         # Handle bitrate (only for lossy formats)
-        if params.get('bitrate') and output_ext in ['.mp3', '.aac', '.m4a', '.ogg', '.opus']:
-             cmd.extend(['-b:a', f"{params['bitrate']}k"])
+        bitrate = params.get('bitrate')
+        if bitrate:
+            if output_ext in ['.mp3', '.aac', '.m4a', '.ogg', '.opus']:
+                cmd.extend(['-b:a', f"{bitrate}k"])
+            elif output_ext == '.flac':
+                cmd.extend(['-compression_level', str(self._flac_compression_level(int(bitrate)))])
              
         # Map metadata if needed (FFmpeg does this by default usually)
         
@@ -179,15 +197,45 @@ class AsyncAudioProcessor:
         # If original, return current file without changes
         if bitrate == 'original':
             return self.current_file
-            
-        output_path = self.current_file.parent / f"bitrate_{bitrate}k.mp3"
-        
+
+        # When a convert step is already present, bitrate should be carried by
+        # that final conversion so we do not transcode twice.
+        if any(op.operation_type == 'convert' for op in self.operations):
+            return self.current_file
+
+        source_ext = self.current_file.suffix.lower()
+        if source_ext == '.alac':
+            source_ext = '.m4a'
+
+        codec_map = {
+            '.mp3': 'libmp3lame',
+            '.aac': 'aac',
+            '.m4a': 'aac',
+            '.ogg': 'libopus',
+            '.opus': 'libopus',
+            '.flac': 'flac',
+            '.wav': 'pcm_s16le',
+            '.aiff': 'pcm_s16be',
+        }
+        target_codec = codec_map.get(source_ext, 'libmp3lame')
+
+        output_path = self.current_file.parent / f"bitrate_{bitrate}k_{self.current_file.stem}{source_ext}"
+
         cmd = [
             'ffmpeg', '-i', str(self.current_file),
-            '-y', '-b:a', f"{bitrate}k",
-            str(output_path)
+            '-y',
+            '-acodec', target_codec,
         ]
-        
+
+        if source_ext == '.flac':
+            cmd.extend(['-compression_level', str(self._flac_compression_level(int(bitrate)))])
+        elif source_ext in ['.mp3', '.aac', '.m4a', '.ogg', '.opus']:
+            cmd.extend(['-b:a', f"{bitrate}k"])
+        else:
+            return self.current_file
+
+        cmd.append(str(output_path))
+
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self._run_ffmpeg, cmd)
         

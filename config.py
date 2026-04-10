@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Set
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, field_validator
 from loguru import logger
 
 
@@ -136,6 +136,30 @@ class Config(BaseSettings):
         default=None,  # None = CPU count * 5
         description="Max workers for CPU-bound tasks"
     )
+
+    @staticmethod
+    def _strip_wrapping_quotes(value):
+        """Normalize env values where docker --env-file keeps quotes literally."""
+        if not isinstance(value, str):
+            return value
+        cleaned = value.strip()
+        if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in {"'", '"'}:
+            return cleaned[1:-1]
+        return cleaned
+
+    @field_validator(
+        "API_HASH",
+        "BOT_TOKEN",
+        "DATABASE_URL",
+        "REDIS_URL",
+        "UPSTASH_REDIS_REST_URL",
+        "UPSTASH_REDIS_REST_TOKEN",
+        "SUDO_USERS",
+        mode="before"
+    )
+    @classmethod
+    def _normalize_quoted_env_strings(cls, value):
+        return cls._strip_wrapping_quotes(value)
     
     @property
     def max_file_size_bytes(self) -> int:

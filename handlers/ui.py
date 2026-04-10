@@ -1,6 +1,23 @@
 """UI builders for inline keyboards"""
 from telethon import Button
 
+
+LOSSY_BITRATE_OPTIONS = [128, 192, 256, 320]
+# Curated high-bitrate presets for FLAC-like workflows (not exhaustive 1kbps steps).
+LOSSLESS_BITRATE_OPTIONS = [
+    128, 192, 256, 320,
+    512, 768,
+    1024, 1536, 2048,
+    3072, 4096, 6144,
+    8192, 12288, 16384,
+    24576, 32768, 36000,
+]
+
+
+def _chunked(items, size):
+    for i in range(0, len(items), size):
+        yield items[i:i + size]
+
 def get_status_text(session, is_premium: bool) -> str:
     """Generate status text with selected operations"""
     file_info = session.audio_file
@@ -114,14 +131,22 @@ def get_sample_rate_menu(is_premium: bool):
     
     return buttons
 
-def get_bitrate_menu():
-    """Get bitrate selection menu"""
-    buttons = [
-        [Button.inline("128 kbps", data="br_128"), Button.inline("192 kbps", data="br_192")],
-        [Button.inline("256 kbps", data="br_256"), Button.inline("320 kbps", data="br_320")],
-        [Button.inline("✨ Original", data="br_original")],
-        [Button.inline("« Back", data="back_main")]
-    ]
+def get_bitrate_menu(format_name: str = None, is_premium: bool = False):
+    """Get bitrate selection menu, aware of selected/source format."""
+    normalized = (format_name or "").lower()
+    is_lossless_target = normalized in {"flac", "wav", "aiff", "alac"}
+
+    if is_lossless_target and is_premium:
+        options = LOSSLESS_BITRATE_OPTIONS
+    else:
+        options = LOSSY_BITRATE_OPTIONS
+
+    buttons = []
+    for row in _chunked(options, 2):
+        buttons.append([Button.inline(f"{value} kbps", data=f"br_{value}") for value in row])
+
+    buttons.append([Button.inline("✨ Original", data="br_original")])
+    buttons.append([Button.inline("« Back", data="back_main")])
     return buttons
 
 def get_effects_menu():
