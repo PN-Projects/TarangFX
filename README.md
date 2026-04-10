@@ -9,14 +9,14 @@ pinned: false
 
 <div align="center">
 
-# 🎵 TarangFX v2.0.0-beta
+# 🎵 TarangFX v2.0.0-stable
 
 ### The Modern Audio Mastering Bot
 
 *Professional-grade audio processing pipeline built on Telethon & Spotify's Pedalboard.*
 
 [![License](https://img.shields.io/badge/license-AGPL%20v3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/agpl-3.0)
-[![Version](https://img.shields.io/badge/version-v2.0.0--beta-orange?style=for-the-badge)](https://github.com/PN-Projects/TarangFX/releases)
+[![Version](https://img.shields.io/badge/version-v2.0.0--stable-brightgreen?style=for-the-badge)](https://github.com/PN-Projects/TarangFX/releases)
 [![Tech](https://img.shields.io/badge/Powered%20By-Pedalboard-green?style=for-the-badge)](https://github.com/spotify/pedalboard)
 [![Telegram](https://img.shields.io/badge/Try%20Now-@TarangFXbot-2CA5E0?style=for-the-badge&logo=telegram)](https://t.me/TarangFXbot)
 
@@ -26,7 +26,7 @@ pinned: false
 
 ---
 
-## 🚀 About v2.0.0-beta
+## 🚀 About v2.0.0-stable
 
 TarangFX v2 is a complete rewrite focusing on **speed**, **quality**, and **stackable effects**. Unlike the previous version, v2 allows you to chain multiple operations (e.g., "Convert to FLAC" + "Bass Boost" + "Reverb") into a single processing session.
 
@@ -36,6 +36,26 @@ TarangFX v2 is a complete rewrite focusing on **speed**, **quality**, and **stac
 *   **Workflow**: New "Session" system. Configure everything first, then process once.
 *   **Performance**: Redis caching for rate limits and session state.
 
+### ✅ Stable Release Notes (v2.0.0-stable)
+
+This release finalizes the v2 pipeline for production use and includes the following shipped improvements:
+
+*   **Lossless bitrate workflow improvements**:
+    *   Dynamic bitrate menu based on selected/source format.
+    *   FLAC/lossless targets now expose high bitrate presets up to **36000 kbps**.
+    *   **Original** bitrate option is preserved.
+*   **Format-aware validation**:
+    *   Bitrate choices are validated against selected format and user tier.
+    *   Convert and bitrate settings are synchronized so final output uses selected encoding intent.
+*   **Processor pipeline refinements**:
+    *   Avoids unnecessary double-transcoding when both bitrate and convert operations are selected.
+    *   FLAC bitrate-style selections are mapped to FLAC compression behavior for stable output generation.
+*   **Container/runtime stability**:
+    *   Docker runtime supports local Redis for self-contained deployments.
+    *   Cache backend selection supports Upstash when configured, with Redis URL fallback behavior.
+*   **Quality assurance updates**:
+    *   Added/updated tests for bitrate menu behavior and FLAC-related processing logic.
+
 ---
 
 ## ✨ Key Features
@@ -44,7 +64,10 @@ TarangFX v2 is a complete rewrite focusing on **speed**, **quality**, and **stac
 *   **Format Conversion**:
     *   **Free**: MP3, AAC, OGG, OPUS
     *   **Premium**: FLAC, WAV, AIFF, ALAC (Lossless)
-*   **Bitrate Control**: 128kbps, 192kbps, 256kbps, 320kbps, and **Original** (Pass-through).
+*   **Bitrate Control**:
+    *   **Lossy presets**: 128kbps, 192kbps, 256kbps, 320kbps
+    *   **Lossless/FLAC presets (Premium)**: up to 36000kbps
+    *   **Original** (pass-through)
 *   **Sample Rate**:
     *   **Free**: 22.05kHz, 44.1kHz
     *   **Premium**: 48kHz, 96kHz (High-Res)
